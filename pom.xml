@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.13</version>
+        <version>4.1.2</version>
         <relativePath/>
     </parent>
     <groupId>com.embabel</groupId>
@@ -14,13 +14,12 @@
     <version>0.1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
     <name>urbot</name>
-    <description>RAG chatbot with Vaadin UI</description>
+    <description>RAG chatbot backend</description>
 
     <properties>
         <java.version>21</java.version>
-        <embabel-agent.version>1.0.0</embabel-agent.version>
-        <embabel-agent-experimental.version>0.4.0-SNAPSHOT</embabel-agent-experimental.version>
-        <vaadin.version>24.6.4</vaadin.version>
+        <embabel-agent.version>1.5.4</embabel-agent.version>
+        <embabel-agent-eval.version>1.5.3</embabel-agent-eval.version>
     </properties>
 
     <dependencyManagement>
@@ -29,13 +28,6 @@
                 <groupId>com.embabel.agent</groupId>
                 <artifactId>embabel-agent-dependencies</artifactId>
                 <version>${embabel-agent.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>com.vaadin</groupId>
-                <artifactId>vaadin-bom</artifactId>
-                <version>${vaadin.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -54,7 +46,7 @@
         <dependency>
             <groupId>org.drivine</groupId>
             <artifactId>drivine4j-spring-boot-starter</artifactId>
-            <version>0.0.38</version>
+            <version>0.7.0</version>
         </dependency>
 
         <!-- RAG with Neo4j/Drivine backend -->
@@ -74,14 +66,14 @@
         <dependency>
             <groupId>com.embabel.dice</groupId>
             <artifactId>dice</artifactId>
-            <version>0.1.1-SNAPSHOT</version>
+            <version>0.4.0</version>
         </dependency>
 
-        <!-- Shared Vaadin Components -->
+        <!-- Nullness annotations used throughout the codebase -->
         <dependency>
-            <groupId>com.embabel.vaadin</groupId>
-            <artifactId>vaadin-components</artifactId>
-            <version>0.1.0-SNAPSHOT</version>
+            <groupId>org.jspecify</groupId>
+            <artifactId>jspecify</artifactId>
+            <version>1.0.1</version>
         </dependency>
 
         <!-- Spring Transaction (for @Transactional with Drivine) -->
@@ -95,7 +87,7 @@
             <artifactId>embabel-agent-rag-tika</artifactId>
         </dependency>
 
-        <!-- Web and Vaadin -->
+        <!-- Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -104,11 +96,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.vaadin</groupId>
-            <artifactId>vaadin-spring-boot-starter</artifactId>
         </dependency>
 
         <!-- Testing -->
@@ -121,7 +108,7 @@
         <dependency>
             <groupId>com.embabel.agent</groupId>
             <artifactId>embabel-agent-eval</artifactId>
-            <version>${embabel-agent-experimental.version}</version>
+            <version>${embabel-agent-eval.version}</version>
             <scope>test</scope>
         </dependency>
 
@@ -151,18 +138,6 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>com.vaadin</groupId>
-                <artifactId>vaadin-maven-plugin</artifactId>
-                <version>${vaadin.version}</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>prepare-frontend</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
@@ -191,26 +166,6 @@
     </build>
 
     <profiles>
-        <profile>
-            <id>production</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>com.vaadin</groupId>
-                        <artifactId>vaadin-maven-plugin</artifactId>
-                        <version>${vaadin.version}</version>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>build-frontend</goal>
-                                </goals>
-                                <phase>compile</phase>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
         <profile>
             <id>openai-models</id>
             <activation>

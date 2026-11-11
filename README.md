@@ -2,7 +2,6 @@
 
 ![Java](https://img.shields.io/badge/java-%23ED8B00.svg?style=for-the-badge&logo=openjdk&logoColor=white)
 ![Spring](https://img.shields.io/badge/spring-%236DB33F.svg?style=for-the-badge&logo=spring&logoColor=white)
-![Vaadin](https://img.shields.io/badge/Vaadin-00B4F0?style=for-the-badge&logo=vaadin&logoColor=white)
 ![Apache Maven](https://img.shields.io/badge/Apache%20Maven-C71A36?style=for-the-badge&logo=Apache%20Maven&logoColor=white)
 ![Neo4j](https://img.shields.io/badge/Neo4j-008CC1?style=for-the-badge&logo=neo4j&logoColor=white)
 ![Jinja](https://img.shields.io/badge/jinja-white.svg?style=for-the-badge&logo=jinja&logoColor=black)
@@ -17,11 +16,13 @@
 
 > **Template repository** -- Use this as a starting point for building your own RAG chatbot with the [Embabel Agent Framework](https://embabel.com). Click **"Use this template"** on GitHub to create your own copy.
 
-**A RAG-powered document chatbot with a Vaadin web interface, built on the [Embabel Agent Framework](https://github.com/embabel/embabel-agent).**
+> **UI status:** The Vaadin frontend has been removed. Urbot now runs as a headless Spring Boot service; there is currently no web UI or chat HTTP endpoint.
 
-Upload documents, ask questions, and get intelligent answers grounded in your content -- powered by agentic Retrieval-Augmented Generation with Neo4j graph-backed vector search and [DICE](https://github.com/embabel/dice) semantic memory.
+**A RAG-powered document chatbot backend built on the [Embabel Agent Framework](https://github.com/embabel/embabel-agent).**
 
-Urbot is designed to be **extended without modification**. The core application provides the full RAG infrastructure, Vaadin UI, memory system, and chat plumbing out of the box. To build your own chatbot, you add a [Spring profile](https://docs.spring.io/spring-boot/reference/features/profiles.html) with your persona, domain model, tools, and styling -- all in a separate package, without touching any existing code. See [Extensibility](#extensibility) below.
+Ingest documents, ask questions, and get intelligent answers grounded in your content -- powered by agentic Retrieval-Augmented Generation with Neo4j graph-backed vector search and [DICE](https://github.com/embabel/dice) semantic memory.
+
+Urbot is designed to be **extended without modification**. The core application provides the full RAG infrastructure, memory system, and chat plumbing out of the box. To build your own chatbot, you add a [Spring profile](https://docs.spring.io/spring-boot/reference/features/profiles.html) with your persona, domain model, and tools -- all in a separate package, without touching any existing code. See [Extensibility](#extensibility) below.
 
 <p align="center">
   <img src="images/cassie_cat_memories.jpg" width="700" alt="Astrid chatbot answering a question about the user's pets, drawing on extracted memories">
@@ -35,12 +36,6 @@ Urbot is designed to be **extended without modification**. The core application 
 
 ```mermaid
 graph TB
-    subgraph UI["Vaadin Web UI"]
-        CV[Chat View]
-        UD[User Drawer: Personal Documents]
-        GD[Global Drawer: Global Documents]
-    end
-
     subgraph App["Spring Boot Application"]
         subgraph Agent["Embabel Agent Platform"]
             CA[ChatActions: Agentic RAG]
@@ -57,9 +52,6 @@ graph TB
 
     LLM[(LLM Provider: OpenAI / Anthropic)]
 
-    CV --> CA
-    UD --> TP
-    GD --> TP
     TP --> CH
     CH --> EMB
     CA --> EMB
@@ -114,14 +106,14 @@ Urbot has two document scopes for RAG and a separate memory system for learning 
 
 | Scope | Access | Ingestion | Description |
 |---|---|---|---|
-| **Personal** | Per-user context | User Drawer (click profile) | Documents scoped to a user's named context (e.g. `2_personal`). Users can create and switch between multiple contexts. |
-| **Global** | Shared across all users | Global Drawer (`...` toggle) | Documents available to everyone, stored under the `global` context. |
+| **Personal** | Per-user context | `DocumentService` with a user `Context` | Documents scoped to a user's named context (e.g. `2_personal`). Users can create and switch between multiple contexts. |
+| **Global** | Shared across all users | `DocumentService.Context.global(...)` | Documents available to everyone, stored under the `global` context. |
 
 RAG search filters results to the user's current effective context, so personal and global documents are searched independently based on which context is active. See [`DocumentService`](src/main/java/com/embabel/urbot/rag/DocumentService.java) for the ingestion implementation and [`RagConfiguration`](src/main/java/com/embabel/urbot/rag/RagConfiguration.java) for the store setup.
 
-### Memory: Learning Facts with "Learn"
+### Memory: Learning Facts
 
-The **Learn** button in the Memory tab lets users upload files (PDF, DOCX, TXT, etc.) to extract structured facts about themselves. Unlike document ingestion for RAG (which chunks and embeds documents for search), Learn runs the [DICE](https://github.com/embabel/dice) proposition extraction pipeline:
+Uploaded files (PDF, DOCX, TXT, etc.) can be run through fact extraction to build structured facts about the user. Unlike document ingestion for RAG (which chunks and embeds documents for search), this runs the [DICE](https://github.com/embabel/dice) proposition extraction pipeline:
 
 1. **Parse** -- Tika extracts text from the uploaded file
 2. **Extract** -- The LLM identifies propositions (factual claims) from the text
@@ -134,20 +126,13 @@ The same pipeline also runs incrementally on conversation messages: every few tu
 
 See [`IncrementalPropositionExtraction`](src/main/java/com/embabel/urbot/proposition/extraction/IncrementalPropositionExtraction.java) for the extraction flow and [`PropositionConfiguration`](src/main/java/com/embabel/urbot/proposition/PropositionConfiguration.java) for the pipeline wiring.
 
-<p align="center">
-  <img src="images/cassie_memory_clusters.jpg" width="600" alt="Memory tab showing extracted propositions clustered by topic">
-  <br>
-  <em>The Memory tab in the User Drawer showing 68 propositions extracted from uploaded files and conversation, clustered by topic. Each cluster groups related facts -- here about Cassie's pet Artemis, her gardening, cooking, and podcast habits.</em>
-</p>
-
 **Entity extraction requires domain model interfaces.** Without `NamedEntity` subinterfaces (like `Pet`, `Place`, `Band`), DICE has no schema to guide extraction and will only extract untyped propositions. See [Domain Model](#3-domain-model-namedentity-interfaces) below.
 
 ## Technology Stack
 
 | Layer | Technology | Role |
 |---|---|---|
-| **UI** | [Vaadin 24](https://vaadin.com/) | Server-side Java web framework with real-time push updates |
-| **Backend** | [Spring Boot 3](https://spring.io/projects/spring-boot) | Application framework, dependency injection, security |
+| **Backend** | [Spring Boot 4](https://spring.io/projects/spring-boot) | Application framework, dependency injection, security |
 | **Agent Framework** | [Embabel Agent](https://github.com/embabel/embabel-agent) | Agentic AI orchestration with Utility AI pattern |
 | **Semantic Memory** | [DICE](https://github.com/embabel/dice) | Proposition extraction, entity resolution, knowledge graph projection |
 | **Graph + Vector Store** | [Neo4j](https://neo4j.com/) via [Drivine](https://github.com/liberation-data/drivine) | Graph-backed vector embeddings, semantic search, and document relationships |
@@ -164,16 +149,6 @@ Urbot is built on the [Embabel Agent Framework](https://github.com/embabel/embab
 - **`DrivineStore`** -- Neo4j-backed RAG store with vector indexes and graph relationships (Lucene and pgvector backends are also available)
 - **Jinja2 prompt templates** -- Composable system prompts with persona/objective/guardrails separation
 
-### Vaadin UI
-
-The frontend is built entirely in server-side Java using Vaadin Flow:
-
-- [`ChatView`](src/main/java/com/embabel/urbot/vaadin/ChatView.java) -- Main chat interface with message bubbles, markdown rendering, and real-time tool call progress indicators
-- [`UserDrawer`](src/main/java/com/embabel/urbot/vaadin/UserDrawer.java) -- Click the profile chip to manage personal documents, switch contexts, view memory and entities, and log out
-- [`GlobalDrawer`](src/main/java/com/embabel/urbot/vaadin/GlobalDrawer.java) -- Right-side toggle panel for uploading and managing global documents
-- **Dark theme** -- Custom Lumo theme with responsive design
-- **Push updates** -- Async responses stream to the browser via long polling
-
 ### Neo4j Vector Store
 
 Documents are chunked, embedded, and stored in Neo4j via Drivine:
@@ -186,21 +161,17 @@ Documents are chunked, embedded, and stored in Neo4j via Drivine:
 
 ## Features
 
-- **Document upload** -- PDF, DOCX, XLSX, TXT, MD, HTML, ODT, RTF (up to 10MB)
-- **URL ingestion** -- Fetch and index web pages directly
+- **Document ingestion** -- PDF, DOCX, XLSX, TXT, MD, HTML, ODT, RTF via Tika; files, streams, and URLs
 - **Personal & global documents** -- Personal documents scoped per user context; global documents shared across all users
-- **Multi-context workspaces** -- Create and switch between named contexts to organize personal documents
-- **Learn from files** -- Upload files to extract structured facts about the user via DICE proposition extraction
-- **Entity extraction** -- Automatically identifies and types entities (people, places, organizations, etc.) from conversation and uploaded files
-- **Markdown chat** -- Responses render with full markdown and code highlighting
-- **Tool call visibility** -- See real-time progress as the agent searches your documents
-- **Session persistence** -- Conversation history preserved across page reloads
+- **Multi-context workspaces** -- Named contexts organize personal documents
+- **Learn from files** -- Extract structured facts about the user via DICE proposition extraction
+- **Entity extraction** -- Automatically identifies and types entities (people, places, organizations, etc.) from conversation and ingested files
 - **Configurable persona** -- Switch voice and objective via configuration
 - **Custom chatbot profiles** -- Activate a Spring profile to replace the entire persona, domain model, tools, and RAG configuration
 
 ## Extensibility
 
-Urbot is an extensible template. You never need to modify the core application code -- instead, you add your own package alongside it and activate it with a [Spring profile](https://docs.spring.io/spring-boot/reference/features/profiles.html). The base application provides RAG infrastructure, Vaadin UI, [DICE](https://github.com/embabel/dice) semantic memory, and chat plumbing; your profile adds a persona, domain model, tools, stylesheet, and `ToolishRag` configuration to create an entirely different chatbot.
+Urbot is an extensible template. You never need to modify the core application code -- instead, you add your own package alongside it and activate it with a [Spring profile](https://docs.spring.io/spring-boot/reference/features/profiles.html). The base application provides RAG infrastructure, [DICE](https://github.com/embabel/dice) semantic memory, and chat plumbing; your profile adds a persona, domain model, tools, and `ToolishRag` configuration to create an entirely different chatbot.
 
 When no profile is set, the `default` profile is active and Urbot runs as a generic document Q&A assistant with the built-in `globalDocuments` `ToolishRag` bean. When a profile is activated, that default bean is skipped (via `@Profile("default")`) and the profile's `@Configuration` class provides its own `ToolishRag` and any other beans it needs.
 
@@ -216,7 +187,6 @@ Bot packages are discovered at startup by [`BotPackageScanConfiguration`](src/ma
 graph TB
     subgraph Core["Urbot Core -- never modified"]
         direction TB
-        UI["Vaadin UI"]
         Chat["ChatActions"]
         RAG["RagConfiguration"]
         Memory["DICE Semantic Memory"]
@@ -233,7 +203,6 @@ graph TB
         Config["Configuration class"]
         Domain["Domain Model"]
         BotPersona["Custom Persona"]
-        Style["Custom Stylesheet"]
         Docker["Docker Services"]
     end
 
@@ -247,14 +216,13 @@ Each custom chatbot lives in its own package (e.g. `com.embabel.bot.astrid`) and
 
 | Axis | Mechanism | Example |
 |---|---|---|
-| **Properties** | [`application-<profile>.properties`](https://docs.spring.io/spring-boot/reference/features/external-config.html#features.external-config.files.profile-specific) overrides persona, objective, LLM model, temperature, stylesheet | `urbot.chat.persona=astrid` |
+| **Properties** | [`application-<profile>.properties`](https://docs.spring.io/spring-boot/reference/features/external-config.html#features.external-config.files.profile-specific) overrides persona, objective, LLM model, temperature | `urbot.chat.persona=astrid` |
 | **Persona & Objective** | Jinja templates in `prompts/personas/<name>.jinja` and `prompts/objectives/<name>.jinja` | Astrid's warm astrologer voice |
 | **Domain Model** | `NamedEntity` subinterfaces scoped via `urbot.bot-packages` -- automatically added to the [DICE](https://github.com/embabel/dice) data dictionary for entity extraction | `Pet`, `Band`, `Goal`, `Place` |
 | **Relationships** | A `Relations` bean defines how entities connect (e.g. user _owns_ Pet, user _listens to_ Band) | `Relations.empty().withSemanticBetween(...)` |
 | **Tools** | `@LlmTool` classes, `Subagent` beans, `ToolishRag` beans -- all auto-discovered via [Spring component scanning](https://docs.spring.io/spring-framework/reference/core/beans/classpath-scanning.html) | `AstrologyTools`, `DailyHoroscopeAgent` |
 | **ToolishRag** | Profile-specific `ToolishRag` bean replaces the default `globalDocuments` | `astrologyDocuments` scoped to global context |
 | **Users** | `@Primary UrbotUserService` bean overrides the default user list | Different demo users per bot |
-| **Stylesheet & Logo** | `urbot.stylesheet=<name>` loads `themes/urbot/<name>.css` and uses `images/<name>.jpg` as the logo on the chat and login pages | Custom color palette, branding, and logo |
 | **Docker services** | Profile-specific compose services (e.g. an astrology API container) | `docker compose --profile astrology up` |
 
 ### 1. Properties
@@ -272,7 +240,6 @@ Key properties:
 | `urbot.chat.max-words` | Soft response length limit | `80` |
 | `urbot.bot-packages` | Packages to scan for bot components | _(none)_ |
 | `urbot.memory.enabled` | Enable DICE memory extraction | `true` |
-| `urbot.stylesheet` | CSS override (`themes/urbot/<name>.css`) + logo (`images/<name>.jpg`, displayed at 48px in chat, 80px on login) | _(none)_ |
 
 See [`UrbotProperties`](src/main/java/com/embabel/urbot/UrbotProperties.java) for the full configuration record.
 
@@ -383,8 +350,7 @@ The astrid branch adds:
 | `AstrologyTools` | `@LlmTool` methods wrapping a Swiss Ephemeris API for natal charts and transits |
 | Domain interfaces (`Pet`, `Band`, `Book`, `Goal`, `Place`, `Person`, `Author`, `Food`, `Hobby`) | Typed entity extraction from conversation -- DICE learns about pets, music taste, travel history, etc. |
 | `astrid.jinja` persona | An Australian astrologer who speaks casually and believes the stars explain life |
-| `astrid.css` | Custom dark theme with astrology-inspired colors |
-| `application-astrid.properties` | Persona, objective, high temperature (1.38), bot package, stylesheet |
+| `application-astrid.properties` | Persona, objective, high temperature (1.38), bot package |
 
 The domain interfaces in the astrid branch are the key enabler for rich memory. When a user says "I have a cat named Artemis", DICE:
 1. Extracts the proposition "User owns a cat named Artemis"
@@ -428,25 +394,10 @@ src/main/java/
 │   │   └── extraction/
 │   │       └── IncrementalPropositionExtraction.java  # Learn + conversation extraction
 │   ├── security/
-│   │   ├── SecurityConfiguration.java  # Spring Security setup
-│   │   └── LoginView.java              # Login page
+│   │   └── SecurityConfiguration.java  # Spring Security setup
 │   ├── user/
 │   │   ├── UrbotUser.java              # User model (implements NamedEntity + Person)
 │   │   └── UrbotUserService.java       # User service interface
-│   └── vaadin/
-│       ├── ChatView.java               # Main chat interface
-│       ├── ChatMessageBubble.java      # User/assistant message rendering
-│       ├── GlobalDrawer.java           # Global document management panel
-│       ├── UserDrawer.java             # Personal docs + context selector + memory + entities
-│       ├── MemorySection.java          # Memory tab with Learn upload + propositions
-│       ├── EntitiesSection.java        # Entities tab showing context-scoped entities
-│       ├── PropositionsPanel.java      # Proposition list with clustering
-│       ├── EntityPanel.java            # Single entity card renderer
-│       ├── DocumentListSection.java    # Document list component
-│       ├── FileUploadSection.java      # File upload component (reusable)
-│       ├── UrlIngestSection.java       # URL ingestion component (reusable)
-│       ├── UserSection.java            # Clickable user profile chip
-│       └── Footer.java                 # Document/chunk statistics
 └── com/embabel/bot/                  # Custom chatbot profiles (profile-gated)
     └── <yourbot>/                      # e.g. astrid/
         ├── <YourBot>Configuration.java # @Configuration with tools, ToolishRag, domain relations
@@ -454,8 +405,6 @@ src/main/java/
         └── domain/                     # NamedEntity subinterfaces for DICE extraction
 
 src/main/resources/
-├── META-INF/resources/images/
-│   └── <yourbot>.jpg                   # Logo image (required when urbot.stylesheet is set)
 ├── application.yml                     # Base config (server, LLM, Neo4j, chunking)
 ├── application-<profile>.properties    # Profile overrides (persona, objective, bot-packages)
 └── prompts/
@@ -529,19 +478,11 @@ The `-XX:AOTCache` flag loads the pre-generated AOT cache, skipping class loadin
 
 > **Note:** `aot.sh` requires Java 24+ (which ships with Project Leyden AOT cache support). Make sure `java -version` reports 24 or later before running the script.
 
-Open [http://localhost:8080](http://localhost:8080) and log in:
+The service starts on [http://localhost:8080](http://localhost:8080), but there is currently no UI or chat endpoint. Login users are provided by `DummyUrbotUserService` (`alice` / `ben`, password `test`) and used by Spring Security's generated form login if you add web endpoints.
 
-| Username | Password | Roles |
-|---|---|---|
-| `admin` | `admin` | ADMIN, USER |
-| `user` | `user` | USER |
+### Using the Backend
 
-### Upload Documents and Chat
-
-1. Click your **profile chip** (top right) to open the personal documents drawer -- upload files or paste URLs scoped to your current context
-2. Click the **`...` toggle** on the right edge to open the global documents drawer -- uploads here are shared across all users
-3. Use the **Learn** button in the Memory tab to upload files for fact extraction -- DICE will extract propositions and build a knowledge graph about you
-4. Ask questions -- the agent will search your documents and memories to synthesize answers
+With no UI, use the Spring beans directly (as the integration tests do): ingest documents via `DocumentService`, then invoke the `Chatbot` bean with `UserMessage`s and an `OutputChannel`.
 
 ## Configuration
 

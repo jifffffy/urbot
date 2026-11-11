@@ -1,5 +1,9 @@
 # Spontaneous Logout Bug — Vaadin + Spring Security + Push
 
+> Historical note: the Vaadin UI has since been removed, but `NullRequestCache`
+> is still configured deliberately in `SecurityConfiguration` and should not be
+> removed without understanding this failure mode.
+
 ## History
 
 This bug has appeared multiple times. It was most recently triggered by
@@ -94,14 +98,6 @@ to prevent re-investigating them:
   push response is committed.
 
 - **Disabling Vaadin dev tools / live-reload** — No effect.
-
-## Diagnostic Tools
-
-- `test-session-browser.mjs` — Playwright-based browser test that logs in,
-  sends chat messages, simulates tab switching, and monitors for phantom
-  JSESSIONID cookie changes. Requires Playwright (`cd /tmp && npm install
-  playwright && npx playwright install chromium`). Run with
-  `cd /tmp && node /path/to/test-session-browser.mjs`.
 
 ## Key Insight
 

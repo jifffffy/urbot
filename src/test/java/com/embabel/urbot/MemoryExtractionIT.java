@@ -221,8 +221,7 @@ class MemoryExtractionIT {
     }
 
     /**
-     * Simple output channel that collects assistant messages into a blocking queue,
-     * mirroring the pattern used by {@code ChatView.VaadinOutputChannel}.
+     * Simple output channel that collects assistant messages into a blocking queue.
      */
     private static class CollectingOutputChannel implements OutputChannel {
 

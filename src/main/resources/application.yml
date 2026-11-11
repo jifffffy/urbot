@@ -5,9 +5,6 @@ server:
       cookie:
         name: URBOT_SESSION
 
-vaadin:
-  close-idle-sessions: false
-
 # Neo4j Database Configuration (Drivine)
 database:
   datasources:

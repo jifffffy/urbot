@@ -4,21 +4,23 @@ import com.embabel.agent.rag.service.NamedEntityDataRepository;
 import com.embabel.urbot.user.DummyUrbotUserService;
 import com.embabel.urbot.user.UrbotUser;
 import com.embabel.urbot.user.UrbotUserService;
-import com.vaadin.flow.spring.security.VaadinWebSecurity;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.savedrequest.NullRequestCache;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 
 /**
  * Spring Security configuration for Urbot.
  */
 @Configuration
 @EnableWebSecurity
-class SecurityConfiguration extends VaadinWebSecurity {
+class SecurityConfiguration {
 
     private final UrbotUserService userService;
 
@@ -26,34 +28,33 @@ class SecurityConfiguration extends VaadinWebSecurity {
         this.userService = userService;
     }
 
-    @Override
-    protected void configure(HttpSecurity http) throws Exception {
+    @Bean
+    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests(auth -> auth
-                .requestMatchers(new AntPathRequestMatcher("/images/**")).permitAll()
+                .anyRequest().authenticated()
         );
-        super.configure(http);
-        setLoginView(http, LoginView.class);
 
         http.userDetailsService(userService);
+        http.formLogin(Customizer.withDefaults());
 
         // Disable the request cache to prevent phantom session creation.
-        // When a stale request (from a previous server run or expired push connection)
+        // When a stale request (from a previous server run or expired connection)
         // arrives with an invalid JSESSIONID, Spring Security's default
         // HttpSessionRequestCache calls getSession() to save the request, which
         // creates a new empty session and sets a Set-Cookie that overwrites
-        // the authenticated session cookie. With Vaadin (a SPA), we don't need
-        // the request cache — the app always loads at "/".
+        // the authenticated session cookie.
         http.requestCache(cache -> cache.requestCache(new NullRequestCache()));
 
-        // Configure logout
         http.logout(logout -> logout
                 .logoutUrl("/logout")
                 .logoutSuccessUrl("/login")
                 .invalidateHttpSession(true)
                 .clearAuthentication(true)
-                .logoutRequestMatcher(new AntPathRequestMatcher("/logout", "GET"))
+                .logoutRequestMatcher(PathPatternRequestMatcher.pathPattern(HttpMethod.GET, "/logout"))
                 .permitAll()
         );
+
+        return http.build();
     }
 
     @Bean

@@ -15,19 +15,6 @@ target/
 logs/
 *.log
 
-# Vaadin
-node_modules/
-.vaadin-node-tasks.lock
-src/main/frontend/generated/
-frontend/generated/
-vite.generated.ts
-vite.config.ts
-types.d.ts
-tsconfig.json
-pnpm-lock.yaml
-package-lock.json
-package.json
-
 # OS
 .DS_Store
 Thumbs.db
