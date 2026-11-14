@@ -29,7 +29,9 @@ urbot:
 
   chat:
     llm:
-      model: gpt-4.1-mini
+      # Local default: Google Gemma via Ollama. Override with URBOT_CHAT_MODEL
+      # (e.g. gemini-3.6-flash when GEMINI_API_KEY is set).
+      model: ${URBOT_CHAT_MODEL:gemma4:e4b}
       temperature: 0.0
     persona: assistant
     max-words: 80
@@ -44,20 +46,20 @@ urbot:
     entity-packages: []
 
     extraction-llm:
-      model: gpt-4.1-mini
+      model: ${URBOT_MEMORY_MODEL:${URBOT_CHAT_MODEL:gemma4:e4b}}
       temperature: 0.0
       timeout: 240s
 
     entity-resolution-llm:
-      model: gpt-4.1-mini
+      model: ${URBOT_MEMORY_MODEL:${URBOT_CHAT_MODEL:gemma4:e4b}}
       temperature: 0.0
       timeout: 120s
 
     classify-llm:
-      model: gpt-4.1-nano
+      model: ${URBOT_FAST_MODEL:${URBOT_MEMORY_MODEL:${URBOT_CHAT_MODEL:gemma4:e4b}}}
       temperature: 0.0
     projection-llm:
-      model: gpt-4.1-nano
+      model: ${URBOT_FAST_MODEL:${URBOT_MEMORY_MODEL:${URBOT_CHAT_MODEL:gemma4:e4b}}}
       temperature: 0.0
     window-size: 20
     overlap-size: 2
@@ -100,8 +102,8 @@ spring:
 embabel:
 
   models:
-    default-llm: gpt-4.1-mini
-    default-embedding-model: text-embedding-3-small
+    default-llm: ${URBOT_CHAT_MODEL:gemma4:e4b}
+    default-embedding-model: ${URBOT_EMBEDDING_MODEL:nomic-embed-text:v1.5}
 
   agent:
     platform:

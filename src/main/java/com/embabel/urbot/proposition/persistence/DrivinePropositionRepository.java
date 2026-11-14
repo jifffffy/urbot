@@ -10,6 +10,7 @@ import com.embabel.dice.proposition.Proposition;
 import com.embabel.dice.proposition.PropositionQuery;
 import com.embabel.dice.proposition.PropositionRepository;
 import com.embabel.dice.proposition.PropositionStatus;
+import com.embabel.urbot.rag.VectorIndexSupport;
 import jakarta.annotation.PostConstruct;
 import org.drivine.manager.CascadeType;
 import org.drivine.manager.GraphObjectManager;
@@ -51,6 +52,10 @@ public class DrivinePropositionRepository implements PropositionRepository {
     @PostConstruct
     public void provision() {
         logger.info("Provisioning proposition vector index");
+        VectorIndexSupport.dropIfDimensionsDiffer(
+                persistenceManager,
+                embeddingService.getDimensions(),
+                PROPOSITION_VECTOR_INDEX);
         createVectorIndex(PROPOSITION_VECTOR_INDEX, "Proposition");
     }
 

@@ -50,7 +50,7 @@ graph TB
         EMB[Vector Embeddings + Graph Search]
     end
 
-    LLM[(LLM Provider: OpenAI / Anthropic)]
+    LLM[(LLM Provider: Ollama / Gemini / OpenAI / Anthropic)]
 
     TP --> CH
     CH --> EMB
@@ -137,7 +137,7 @@ See [`IncrementalPropositionExtraction`](src/main/java/com/embabel/urbot/proposi
 | **Semantic Memory** | [DICE](https://github.com/embabel/dice) | Proposition extraction, entity resolution, knowledge graph projection |
 | **Graph + Vector Store** | [Neo4j](https://neo4j.com/) via [Drivine](https://github.com/liberation-data/drivine) | Graph-backed vector embeddings, semantic search, and document relationships |
 | **Document Parsing** | [Apache Tika](https://tika.apache.org/) | Extract text from PDF, DOCX, HTML, and 1000+ formats |
-| **LLM** | OpenAI / Anthropic | Chat completion and text embedding models |
+| **LLM** | Ollama (default) / OpenAI / Anthropic / Gemini | Chat completion and text embedding models |
 | **Auth** | Spring Security | Form-based authentication with role-based access |
 
 ### Embabel Agent Framework
@@ -154,7 +154,7 @@ Urbot is built on the [Embabel Agent Framework](https://github.com/embabel/embab
 Documents are chunked, embedded, and stored in Neo4j via Drivine:
 
 - **Chunking** -- 800-character chunks with 100-character overlap for context continuity
-- **Embeddings** -- Generated via OpenAI `text-embedding-3-small` (configurable)
+- **Embeddings** -- Defaults to Ollama `nomic-embed-text:v1.5` (configurable via `URBOT_EMBEDDING_MODEL`)
 - **Metadata filtering** -- Chunks tagged with user/context metadata for scoped search
 - **Graph relationships** -- Document → section → chunk hierarchy preserved as graph edges
 - **Persistent storage** -- Neo4j container via Docker Compose, survives restarts
@@ -235,7 +235,7 @@ Key properties:
 |----------|-------------|---------|
 | `urbot.chat.persona` | Persona template name (`prompts/personas/<name>.jinja`) | `assistant` |
 | `urbot.chat.objective` | Objective template (`prompts/objectives/<name>.jinja`) | `qa` |
-| `urbot.chat.llm.model` | Chat LLM model ID | `gpt-4.1-mini` |
+| `urbot.chat.llm.model` | Chat LLM model ID | `${URBOT_CHAT_MODEL:gemma4:e4b}` |
 | `urbot.chat.llm.temperature` | LLM temperature | `0.0` |
 | `urbot.chat.max-words` | Soft response length limit | `80` |
 | `urbot.bot-packages` | Packages to scan for bot components | _(none)_ |
@@ -428,7 +428,7 @@ docker-compose.yml                      # Neo4j + optional profile-specific serv
 
 - Java 21+
 - Docker (for Neo4j)
-- An OpenAI or Anthropic API key
+- [Ollama](https://ollama.com/) with a chat model and `nomic-embed-text:v1.5` (the default local models), or an OpenAI/Anthropic/Gemini API key
 - (Optional) A [Brave Search API key](https://brave.com/search/api/) for web search via MCP
 
 ### Run (Default Mode)
@@ -437,8 +437,13 @@ docker-compose.yml                      # Neo4j + optional profile-specific serv
 # Start Neo4j
 docker compose up -d
 
-# Set your API key
-export OPENAI_API_KEY=sk-...    # or ANTHROPIC_API_KEY for Claude
+# Defaults to Ollama: gemma4:e4b for chat and nomic-embed-text:v1.5 for embeddings
+ollama pull gemma4:e4b
+ollama pull nomic-embed-text:v1.5
+
+# Optional: use Gemini instead (requires a Google API key)
+export GOOGLE_API_KEY=...
+export URBOT_CHAT_MODEL=gemini-3.6-flash
 
 # Optional: enable Brave web search MCP tool
 export BRAVE_API_KEY=BSA...
@@ -497,7 +502,7 @@ urbot:
 
   chat:
     llm:
-      model: gpt-4.1-mini    # LLM for chat responses
+      model: ${URBOT_CHAT_MODEL:gemma4:e4b}  # LLM for chat responses
       temperature: 0.0        # Deterministic responses
     persona: assistant        # Prompt persona template
     objective: qa             # Prompt objective template
@@ -507,14 +512,14 @@ urbot:
   memory:
     enabled: true
     extraction-llm:
-      model: gpt-4.1-mini
+      model: ${URBOT_MEMORY_MODEL:${URBOT_CHAT_MODEL:gemma4:e4b}}
     window-size: 20           # Messages per extraction window
     trigger-interval: 6       # Extract every N messages
 
 embabel:
   models:
-    default-llm: gpt-4.1-mini
-    default-embedding-model: text-embedding-3-small
+    default-llm: ${URBOT_CHAT_MODEL:gemma4:e4b}
+    default-embedding-model: ${URBOT_EMBEDDING_MODEL:nomic-embed-text:v1.5}
 
 # Neo4j connection (matches docker-compose.yml)
 database:
@@ -527,9 +532,13 @@ database:
       password: urbot123
 ```
 
-LLM provider is selected automatically based on which API key is set:
+Ollama models are always available. Cloud providers are added at build time by Maven profiles:
 - `OPENAI_API_KEY` activates OpenAI models
 - `ANTHROPIC_API_KEY` activates Anthropic Claude models
+- `GEMINI_API_KEY` activates the Gemini starter
+- `GOOGLE_API_KEY` activates the Google GenAI starter (newer Gemini models)
+
+Override the defaults with `URBOT_CHAT_MODEL`, `URBOT_MEMORY_MODEL`, `URBOT_FAST_MODEL`, and `URBOT_EMBEDDING_MODEL`. Changing the embedding model drops and recreates Neo4j vector indexes with the new dimensions; re-ingest documents afterward.
 
 ### MCP Tools
 

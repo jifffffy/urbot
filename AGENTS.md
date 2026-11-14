@@ -5,7 +5,8 @@ Urbot: Spring Boot 4.1 backend chat service built on the Embabel Agent framework
 ## Run / build
 
 - Neo4j is required before startup: `docker compose up -d` (Bolt `7891`, HTTP `8892`; not the default 7687/7474). `DrivineStore` calls `provision()` at bean creation, so the app fails without it.
-- Provider is chosen by Maven profile activation on env vars, not runtime config: export `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` *before* running so the matching `embabel-agent-starter-*` is on the classpath.
+- Provider is chosen by Maven profile activation on env vars, not runtime config: export `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, or `GOOGLE_API_KEY` *before* running so the matching `embabel-agent-starter-*` is on the classpath. Ollama is always on the classpath.
+- Default models are local Ollama `gemma4:e4b` (chat) and `nomic-embed-text:v1.5` (embeddings), overridable with `URBOT_CHAT_MODEL`, `URBOT_MEMORY_MODEL`, `URBOT_FAST_MODEL`, and `URBOT_EMBEDDING_MODEL`. Do not reintroduce hard-coded OpenAI model IDs.
 - `./mvnw spring-boot:run` (default generic assistant)
 - `./mvnw spring-boot:run -Dspring-boot.run.profiles=<bot>` (custom bot; default `globalDocuments` bean is `@Profile("default")`, so it disappears)
 - Package without the old frontend build: `./mvnw -DskipTests package`.
@@ -26,13 +27,14 @@ Urbot: Spring Boot 4.1 backend chat service built on the Embabel Agent framework
 - Core code: `com.embabel.urbot`. Custom bots: `com.embabel.bot.<name>`, with every bean gated by `@Profile("<name>")`.
 - A bot package is invisible unless listed in `urbot.bot-packages`; `BotPackageScanConfiguration` scans its beans and `PropositionConfiguration` also builds the DICE entity schema from the same packages.
 - `Tool`, `LlmReference`, `ToolishRag`, and `Subagent` beans are auto-collected by `ChatActions` via `List<...>` injection — no explicit wiring.
-- Entity extraction is only typed for `NamedEntity` subinterfaces in `urbot.bot-packages` or `urbot.memory.entity-packages`. The built-in `com.embabel.domain.personal` interfaces are **not** active by default (`entity-packages: []`).
+- Entity extraction is only typed for `NamedEntity` subinterfaces in `urbot.bot-packages` or `urbot.memory.entity-packages`. No domain interfaces are active by default (`entity-packages: []`); only `com.embabel.domain.common.Person` remains, as a base type for `UrbotUser`.
 - Config lives under `urbot.chat.*` (`persona`, `objective`, `behaviour`, `llm.model`, `max-words`). `src/main/java/com/embabel/bot/README.md` shows stale flat names like `urbot.persona` — trust `application.yml` and `ChatbotOptions`.
 - Templates are name-resolved from `src/main/resources/prompts/{personas,objectives,behaviours}/<name>.jinja`.
 
 ## RAG / memory scoping
 
 - Every chunk carries metadata key `context` (`DocumentService.Context.CONTEXT_KEY`).
+- Embedding dimensions are fixed per vector index, so `VectorIndexSupport` drops mismatched indexes before provisioning (e.g. 1536→768 when switching OpenAI to `nomic-embed-text`). Documents must be re-ingested after such a switch.
 - Personal context = `<userId>_<contextName>` (default context name is `personal`, e.g. `1_personal`); global context = literal `global`.
 - `RagConfiguration.globalDocuments` filters `context=global`; `UrbotUser.references()` filters `context=effectiveContext()`. Preserve these filters when adding retrieval.
 

@@ -65,6 +65,11 @@ class RagConfiguration {
                 platformTransactionManager,
                 new DrivineCypherSearch(persistenceManager)
         );
+        VectorIndexSupport.dropIfDimensionsDiffer(
+                persistenceManager,
+                embeddingService.getDimensions(),
+                properties.neoRag().getContentElementIndex(),
+                properties.neoRag().getEntityIndex());
         store.provision();
         return store;
     }
